@@ -10,7 +10,7 @@ CFLAGS = -Wall -Werror -pedantic -O2 -DNDEBUG
 LFLAGS = -s -fno-exceptions -lm
 endif
 
-all: fiz
+all: fiz docs
 
 debug:
 	make "BUILD=debug"
@@ -35,8 +35,12 @@ hash.o: hash.c hash.h
 
 expr.o: 
 
+docs: doc.html
+
+doc.html: fiz.h doc.awk
+	awk -f doc.awk fiz.h > $@
+
 clean:
 	-rm -rf fiz fiz.exe
-	-rm -rf libfiz.a
-	-rm -rf *.o
-	-rm -rf *~
+	-rm -rf *.o libfiz.a
+	-rm -rf doc.html *~

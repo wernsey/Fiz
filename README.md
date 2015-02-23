@@ -5,7 +5,8 @@ the language really was (it took me some time to become enlightened)
 and how elegant the API for embedding it in another program could be.
 
 I call it a _Tcl-like_ language because it doesn't attempt to implement all the
-feature.
+features of Tcl. It has several useful features though, like `dict` and `expr`
+and so forth.
 
 Due to limits in the expression evaluator you can't just write an
 `if`- or `while`-statement condition like
@@ -29,5 +30,5 @@ recommend using the interpreter in environments where you may run out of memory.
 
 I took some inspiration (like how the callframes are handled and several of the 
 API functions) from Salvatore Sanfilippo's Picol Tcl interpreter, which can be 
-found at http://antirez.com/page/picol. This is however a new implementation.
+found at http://antirez.com/page/picol. This is, however, a new implementation.
 

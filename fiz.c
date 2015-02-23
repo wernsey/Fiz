@@ -52,11 +52,11 @@ struct fiz_callframe {
  * character is added to 'FooParser.word' directly.
  * 'FooParser.word' is dynamically resized as the need arises.
  */
-struct FizParser {
+typedef struct fiz_parser {
     const char *txt;
     char *word;
     size_t w_size, a_size;
-};
+} FizParser;
 
 enum FI_CODE {
     FI_WORD,  /* A word was read */
@@ -65,7 +65,7 @@ enum FI_CODE {
     FI_ERR    /* Internal error */
 };
 
-static int init_parser(struct FizParser *FI, const char *txt) {
+static int init_parser(FizParser *FI, const char *txt) {
     FI->a_size = INITIAL_WORD_SIZE;
     FI->word = malloc(FI->a_size);
     FI->w_size = 0;
@@ -73,12 +73,12 @@ static int init_parser(struct FizParser *FI, const char *txt) {
     return 1;
 }
 
-static void destroy_parser(struct FizParser *FI) {
+static void destroy_parser(FizParser *FI) {
     free(FI->word);
 }
 
 /* Adds a single character to the word being parsed */
-static void add_char(struct FizParser *FI, char c) {
+static void add_char(FizParser *FI, char c) {
     if(FI->w_size + 1 == FI->a_size - 1) {
         FI->a_size <<= 1;
         FI->word = realloc(FI->word, FI->a_size);
@@ -90,7 +90,7 @@ static void add_char(struct FizParser *FI, char c) {
 }
 
 /* Adds a string to the word being parsed */
-static void add_word(struct FizParser *FI, const char *w)
+static void add_word(FizParser *FI, const char *w)
 {
     size_t wlen = strlen(w);
     if(FI->w_size + wlen >= FI->a_size - 1) {
@@ -124,7 +124,7 @@ static char get_escape(char c) {
  * Used to parse [a b c] and "Hello, $x" words.
  * 'term' specifies the terminating character ']' or '"'
  */
-static enum FI_CODE parse_quote(struct Fiz *F, struct FizParser *FI, char term) {
+static enum FI_CODE parse_quote(Fiz *F, FizParser *FI, char term) {
     while(FI->txt[0] != term) {
         char c = FI->txt[0];
         if(!c) {
@@ -134,7 +134,7 @@ static enum FI_CODE parse_quote(struct Fiz *F, struct FizParser *FI, char term) 
 
         if(c == '[') {
             enum FI_CODE fic;
-            struct FizParser FIi;
+            FizParser FIi;
             init_parser(&FIi, ++FI->txt);
             fic = parse_quote(F, &FIi, ']');
             if(fic == FI_WORD) {
@@ -184,7 +184,7 @@ static enum FI_CODE parse_quote(struct Fiz *F, struct FizParser *FI, char term) 
 
 /* This handles complex cases like quotes within braces, eg: {["foo"]}
  */
-static enum FI_CODE gobble_quote(struct Fiz *F, struct FizParser *FI, char term) {
+static enum FI_CODE gobble_quote(Fiz *F, FizParser *FI, char term) {
     add_char(FI, *(FI->txt++));
     while(FI->txt[0] != term) {
         char c = FI->txt[0];
@@ -210,7 +210,7 @@ static enum FI_CODE gobble_quote(struct Fiz *F, struct FizParser *FI, char term)
 /*
  * Parses words in braces, like {puts "hello"}
  */
-static enum FI_CODE parse_brace(struct Fiz *F, struct FizParser *FI) {
+static enum FI_CODE parse_brace(Fiz *F, FizParser *FI) {
     int level = 1;
     for(;;) {
         char c = FI->txt[0];
@@ -251,7 +251,7 @@ static enum FI_CODE parse_brace(struct Fiz *F, struct FizParser *FI) {
  * word in the FooParser structure, skipping any whitespace and
  * comments in the process.
  */
-static enum FI_CODE get_word(struct Fiz *F, struct FizParser *FI) {
+static enum FI_CODE get_word(Fiz *F, FizParser *FI) {
     /* Reset the interpreter's word tracker */
     FI->word[0] = '\0';
     FI->w_size = 0;
@@ -287,7 +287,7 @@ restart:
         return parse_quote(F, FI, '\"');
     } else if(FI->txt[0] == '[') {
         enum FI_CODE fic;
-        struct FizParser FIi;
+        FizParser FIi;
         init_parser(&FIi, ++FI->txt);
         fic = parse_quote(F, &FIi, ']');
         if(fic == FI_WORD) {
@@ -345,7 +345,7 @@ restart:
  * The interpreter
  *====================================================================*/
 
-static void add_callframe(struct Fiz *F)  {
+static void add_callframe(Fiz *F)  {
     struct fiz_callframe *cf = malloc(sizeof *cf);
     cf->vars = ht_create(0);
     cf->parent = F->callframe;
@@ -356,7 +356,7 @@ static void free_var(const char *key, void *val) {
 	free(val);
 }
 
-static void delete_callframe(struct Fiz *F) {
+static void delete_callframe(Fiz *F) {
     struct fiz_callframe *cf = F->callframe;
     assert(F->callframe);
     F->callframe = cf->parent;
@@ -364,10 +364,10 @@ static void delete_callframe(struct Fiz *F) {
     free(cf);
 }
 
-static void add_bifs(struct Fiz *F);
+static void add_bifs(Fiz *F);
 
-struct Fiz *fiz_create() {
-    struct Fiz *F = malloc(sizeof *F);
+Fiz *fiz_create() {
+    Fiz *F = malloc(sizeof *F);
     F->callframe = NULL;
     add_callframe(F);
     F->commands = ht_create(0);
@@ -391,7 +391,7 @@ static void free_dict(const char *key, void *vp) {
     ht_free(d, free_var);
 }
 
-void fiz_destroy(struct Fiz *F) {
+void fiz_destroy(Fiz *F) {
     if(!F) return;
     ht_free(F->commands, free_proc);
     ht_free(F->dicts, free_dict);
@@ -408,10 +408,10 @@ static void clear_argv(int argc, char **argv) {
     }
 }
 
-enum Fiz_Code fiz_exec(struct Fiz *F, const char *str) {
+Fiz_Code fiz_exec(Fiz *F, const char *str) {
     enum FI_CODE fic;
-    struct FizParser FI;
-    enum Fiz_Code rc = FIZ_OK;
+    FizParser FI;
+    Fiz_Code rc = FIZ_OK;
 
     /* Where to store the parameters */
     char **argv;
@@ -493,18 +493,18 @@ clean_error:
  * Support API Functions
  *====================================================================*/
 
-const char *fiz_get_return(struct Fiz *F) {
+const char *fiz_get_return(Fiz *F) {
     assert(F->return_val);
     return F->return_val;
 }
 
-void fiz_set_return(struct Fiz *F, const char *s) {
+void fiz_set_return(Fiz *F, const char *s) {
     assert(F->return_val);
     free(F->return_val);
     F->return_val = strdup(s);
 }
 
-void fiz_set_return_ex(struct Fiz *F, const char *fmt, ...) {
+void fiz_set_return_ex(Fiz *F, const char *fmt, ...) {
     char buffer[EX_BUFFER_SIZE];
     va_list arg;
     va_start (arg, fmt);
@@ -513,17 +513,17 @@ void fiz_set_return_ex(struct Fiz *F, const char *fmt, ...) {
     fiz_set_return(F, buffer);
 }
 
-const char *fiz_get_var(struct Fiz *F, const char *name) {
+const char *fiz_get_var(Fiz *F, const char *name) {
     assert(F->callframe);
     return ht_find(F->callframe->vars, name);
 }
 
-void fiz_set_var(struct Fiz *F, const char *name, const char *value) {
+void fiz_set_var(Fiz *F, const char *name, const char *value) {
     assert(F->callframe);
     ht_insert(F->callframe->vars, name, strdup(value));
 }
 
-void fiz_set_var_ex(struct Fiz *F, const char *name, const char *fmt, ...) {
+void fiz_set_var_ex(Fiz *F, const char *name, const char *fmt, ...) {
     char buffer[EX_BUFFER_SIZE];
     va_list arg;
     va_start (arg, fmt);
@@ -532,7 +532,7 @@ void fiz_set_var_ex(struct Fiz *F, const char *name, const char *fmt, ...) {
     fiz_set_var(F, name, buffer);
 }
 
-void fiz_add_func(struct Fiz *F, const char *name, fiz_func fun, void *data) {
+void fiz_add_func(Fiz *F, const char *name, fiz_func fun, void *data) {
     struct proc *p;
     p = malloc(sizeof *p);
     p->type = FIZ_CFUN;
@@ -541,7 +541,7 @@ void fiz_add_func(struct Fiz *F, const char *name, fiz_func fun, void *data) {
     ht_insert(F->commands, name, p);
 }
 
-void fiz_dict_insert(struct Fiz *F, const char *dict, const char *key, const char *value) {
+void fiz_dict_insert(Fiz *F, const char *dict, const char *key, const char *value) {
     char *v;
     struct hash_tbl *d = ht_find(F->dicts, dict);
     if(!d) {
@@ -556,8 +556,8 @@ void fiz_dict_insert(struct Fiz *F, const char *dict, const char *key, const cha
     ht_insert(d, key, strdup(value));
 }
 
-char *fiz_substitute(struct Fiz *F, const char *s) {
-    struct FizParser FI;
+char *fiz_substitute(Fiz *F, const char *s) {
+    FizParser FI;
     char *subs;
     /* Misuse parse_quote to perform the substitution */
     init_parser(&FI, s);
@@ -574,7 +574,7 @@ char *fiz_substitute(struct Fiz *F, const char *s) {
  * Functions to manipulate dicts
  *====================================================================*/
 
-void fiz_dict_insert_ex(struct Fiz *F, const char *dict, const char *key, const char *fmt, ...) {
+void fiz_dict_insert_ex(Fiz *F, const char *dict, const char *key, const char *fmt, ...) {
     char buffer[EX_BUFFER_SIZE];
     va_list arg;
     va_start (arg, fmt);
@@ -583,14 +583,14 @@ void fiz_dict_insert_ex(struct Fiz *F, const char *dict, const char *key, const 
     fiz_dict_insert(F, dict, key, buffer);
 }
 
-const char *fiz_dict_find(struct Fiz *F, const char *dict, const char *key) {
+const char *fiz_dict_find(Fiz *F, const char *dict, const char *key) {
     struct hash_tbl *d = ht_find(F->dicts, dict);
     if(!d) /* Undefined dictionary */
         return NULL;
     return ht_find(d, key);
 }
 
-void fiz_dict_delete(struct Fiz *F, const char *dict, const char *key) {
+void fiz_dict_delete(Fiz *F, const char *dict, const char *key) {
     char *v;
     struct hash_tbl *d = ht_find(F->dicts, dict);
     if(!d) /* Undefined dictionary */
@@ -599,7 +599,7 @@ void fiz_dict_delete(struct Fiz *F, const char *dict, const char *key) {
     if(v) free(v);
 }
 
-const char *fiz_dict_next(struct Fiz *F, const char *dict, const char *key) {
+const char *fiz_dict_next(Fiz *F, const char *dict, const char *key) {
     struct hash_tbl *d = ht_find(F->dicts, dict);
     if(!d) /* Undefined dictionary */
         return NULL;
@@ -612,12 +612,12 @@ const char *fiz_dict_next(struct Fiz *F, const char *dict, const char *key) {
  * implementation, so that cannot be moved to a different file
  *====================================================================*/
 
-enum Fiz_Code fiz_argc_error(struct Fiz *F, const char *cmd, int exp) {
+Fiz_Code fiz_argc_error(Fiz *F, const char *cmd, int exp) {
     fiz_set_return_ex(F, "%s expected %d words", cmd, exp);
     return FIZ_ERROR;
 }
 
-static enum Fiz_Code bif_set(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code bif_set(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
     fiz_set_var(F, argv[1], argv[2]);
@@ -625,7 +625,7 @@ static enum Fiz_Code bif_set(struct Fiz *F, int argc, char **argv, void *data) {
     return FIZ_OK;
 }
 
-static enum Fiz_Code bif_proc(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code bif_proc(Fiz *F, int argc, char **argv, void *data) {
     struct proc *p;
     if(argc != 4)
         return fiz_argc_error(F, argv[0], 4);
@@ -638,14 +638,14 @@ static enum Fiz_Code bif_proc(struct Fiz *F, int argc, char **argv, void *data) 
     return FIZ_OK;
 }
 
-static enum Fiz_Code bif_return(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code bif_return(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 2)
         return fiz_argc_error(F, argv[0], 2);
     fiz_set_return(F, argv[1]);
     return FIZ_RETURN;
 }
 
-static enum Fiz_Code bif_if(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code bif_if(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 3 && argc != 5)
         return fiz_argc_error(F, argv[0], 3);
     if(argc == 5 && strcmp(argv[3], "else")) {
@@ -661,8 +661,8 @@ static enum Fiz_Code bif_if(struct Fiz *F, int argc, char **argv, void *data) {
     return FIZ_OK;
 }
 
-static enum Fiz_Code bif_while(struct Fiz *F, int argc, char **argv, void *data) {
-    enum Fiz_Code fc = FIZ_OK;
+static Fiz_Code bif_while(Fiz *F, int argc, char **argv, void *data) {
+    Fiz_Code fc = FIZ_OK;
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
     for(;;) {
@@ -676,14 +676,14 @@ static enum Fiz_Code bif_while(struct Fiz *F, int argc, char **argv, void *data)
     return FIZ_OK;
 }
 
-static enum Fiz_Code bif_cntrl(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code bif_cntrl(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 1)
         return fiz_argc_error(F, argv[0], 1);
     if(!strcmp(argv[0], "continue")) return FIZ_CONTINUE;
     return FIZ_BREAK;
 }
 
-static void add_bifs(struct Fiz *F) {
+static void add_bifs(Fiz *F) {
     fiz_add_func(F, "set", bif_set, NULL);
     fiz_add_func(F, "proc", bif_proc, NULL);
     fiz_add_func(F, "return", bif_return, NULL);

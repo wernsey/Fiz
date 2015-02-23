@@ -12,8 +12,8 @@
 #define PROMPT ">>> "
 
 int main(int argc, char *argv[]) {
-    struct Fiz *F;
-    enum Fiz_Code c;
+    Fiz *F;
+    Fiz_Code c;
 
     printf("== Fiz interpreter ==\n%s %s\n", __DATE__, __TIME__);
 

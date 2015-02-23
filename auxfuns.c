@@ -39,7 +39,7 @@ char *fiz_readfile(const char *filename) {
     return str;
 }
 
-static enum Fiz_Code aux_puts(struct Fiz  *F, int argc, char **argv, void *data) {
+static Fiz_Code aux_puts(Fiz  *F, int argc, char **argv, void *data) {
     if(argc != 2)
         return fiz_argc_error(F, argv[0], 2);
     puts(argv[1]);
@@ -47,7 +47,7 @@ static enum Fiz_Code aux_puts(struct Fiz  *F, int argc, char **argv, void *data)
     return FIZ_OK;
 }
 
-static enum Fiz_Code aux_expr(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code aux_expr(Fiz *F, int argc, char **argv, void *data) {
     char *e;
     const char *err;
     int i;
@@ -71,7 +71,7 @@ static enum Fiz_Code aux_expr(struct Fiz *F, int argc, char **argv, void *data) 
     return FIZ_OK;
 }
 
-static enum Fiz_Code aux_eqne(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code aux_eqne(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
     if(!strcmp(argv[0], "eq"))
@@ -81,7 +81,7 @@ static enum Fiz_Code aux_eqne(struct Fiz *F, int argc, char **argv, void *data) 
     return FIZ_OK;
 }
 
-static enum Fiz_Code aux_incr(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code aux_incr(Fiz *F, int argc, char **argv, void *data) {
     const char *val;
     int i;
     if(argc != 2)
@@ -101,7 +101,7 @@ static enum Fiz_Code aux_incr(struct Fiz *F, int argc, char **argv, void *data) 
     return FIZ_OK;
 }
 
-static enum Fiz_Code aux_dict(struct Fiz *F, int argc, char **argv, void *data) {
+static Fiz_Code aux_dict(Fiz *F, int argc, char **argv, void *data) {
     const char *v = NULL;
     if(argc < 3)
         return fiz_argc_error(F, argv[0], 3);
@@ -170,9 +170,8 @@ static enum Fiz_Code aux_dict(struct Fiz *F, int argc, char **argv, void *data) 
     return FIZ_OK;
 }
 
-static enum Fiz_Code aux_include(struct Fiz *F, int argc, char **argv, void *data)
-{
-    enum Fiz_Code rc;
+static Fiz_Code aux_include(Fiz *F, int argc, char **argv, void *data) {
+    Fiz_Code rc;
     char *str;
     if(argc != 2)
         return fiz_argc_error(F, argv[0], 2);
@@ -186,7 +185,7 @@ static enum Fiz_Code aux_include(struct Fiz *F, int argc, char **argv, void *dat
     return rc;
 }
 
-void fiz_add_aux(struct Fiz *F) {
+void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "puts", aux_puts, NULL);
     fiz_add_func(F, "expr", aux_expr, NULL);
     fiz_add_func(F, "eq", aux_eqne, NULL);
