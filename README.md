@@ -29,5 +29,5 @@ recommend using the interpreter in environments where you may run out of memory.
 
 I took some inspiration (like how the callframes are handled and several of the 
 API functions) from Salvatore Sanfilippo's Picol Tcl interpreter, which can be 
-found at http://antirez.com/page/picol. 
+found at http://antirez.com/page/picol. This is however a new implementation.
 

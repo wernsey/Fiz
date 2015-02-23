@@ -16,8 +16,7 @@ struct fiz_callframe;
  * Create it with fiz_create(), and destroy it after use
  * with fiz_destroy()
  */
-struct Fiz
-{
+struct Fiz {
 	struct hash_tbl *commands;
 	struct hash_tbl *dicts;
 	struct fiz_callframe *callframe;
@@ -103,7 +102,7 @@ int expr(const char *str, const char **err);
 char *fiz_substitute(struct Fiz *F, const char *s);
 
 /*
- * Helper function to report errors when the wrong number of 
+ * Helper function to report errors when the wrong number of
  * parameters is passed to a command.
  * See any of the built-in functions for its usage.
  */

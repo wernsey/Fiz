@@ -1,21 +1,21 @@
-/*! Hash.h
+/*1 Hash.h
  *# A quick and dirty hash table implementation.\n
  *{
- ** {{struct hash_tbl}} is created with ~~ht_create()
- ** {{struct hash_tbl}} is destroyed with ~~ht_free()
- ** Resize hash tables with ~~ht_rehash()
- ** Insert entries into the table with ~~ht_insert()
- ** Search for entries with ~~ht_find()
- ** Remove entries with ~~ht_delete()
- ** Iterate through the table with ~~ht_next()
+ ** {{struct hash_tbl}} is created with {{~~ht_create()}}
+ ** {{struct hash_tbl}} is destroyed with {{~~ht_free()}}
+ ** Resize hash tables with {{~~ht_rehash()}}
+ ** Insert entries into the table with {{~~ht_insert()}}
+ ** Search for entries with {{~~ht_find()}}
+ ** Remove entries with {{~~ht_delete()}}
+ ** Iterate through the table with {{~~ht_next()}}
  *}
- *-
+ *2 License
  *[
  *# Author: Werner Stoop
- *# This is free and unencumbered software released into the public domain.
- *# http://unlicense.org/
+ *# This software is provided under the terms of the unlicense.
+ *# See http://unlicense.org/ for more details.
  *]
- *-
+ *2 API
  */
 
 #ifndef HASH_H
@@ -26,14 +26,14 @@ extern "C"
 {
 #endif
 
-/*@ typedef void (*clear_all_dtor) (void *)
+/*@ typedef void (*clear_all_dtor) (const char *key, void *val)
  *# A pointer to a function that can clean up values in the hash table.\n
  *# Clean up implies freeing memory allocated to the hash table or the
  *# freeing of other resources allocated to the elements.\n
  *# If, for example, the hash table stores {{FILE}} handles, this function
  *# can be used to close all open files referenced in the hash table.
  */
-  typedef void (*clear_all_dtor) (void *);
+  typedef void (*clear_all_dtor) (const char *key, void *val);
 
 /*@ struct hash_el
  *# Element stored within the hash table 
@@ -47,8 +47,8 @@ extern "C"
 
 /*@ struct ##hash_tbl
  *# Structure for managing tha hash table.\n
- *# Allocate this structure through ~~ht_create()
- *# and deallocate it with ~~ht_free()
+ *# Allocate this structure through {{~~ht_create()}}
+ *# and deallocate it with {{~~ht_free()}}
  */
   struct hash_tbl
   {
@@ -70,15 +70,15 @@ extern "C"
  *# Resizes the hashtable {{ht}} to the {{new_size}}, by rehashing 
  *# each key in the table.\n
  *# The new size must be a power of two.\n
- *# This function is normally called automatically in ~~ht_insert()
+ *# This function is normally called automatically in {{~~ht_insert()}}
  *# if the table reaches a certain size.
  */
   int ht_rehash (struct hash_tbl *ht, int new_size);
 
 /*@ void *##ht_insert (struct hash_tbl *h, const char *key, void *value)
  *# Inserts a {{value}} referenced by the string {{key}} 
- *# into the hash table {{h}}\n
- *# It returns {{value}} on success, or {{NULL}} if an internal malloc()
+ *# into the hash table {{h}}.\n
+ *# It returns {{value}} on success, or {{NULL}} if an internal {{malloc()}}
  *# failed.
  */
   void *ht_insert (struct hash_tbl *h, const char *key, void *value);
