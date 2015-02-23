@@ -1,0 +1,40 @@
+# Test the looping behaviour
+set a 0
+while {expr $a < 100} {
+	incr a; 
+	# Test the continue statement
+	if {expr $a = 4} continue; 
+	puts $a; 
+	# Test the break statement
+	if {expr $a=8} break
+}
+
+# The following should work:
+set x pu
+set y ts
+$x$y "hello world"
+
+# Test recursion, through a factorial function
+proc fac {x} {
+	if {expr $x<2} {return 1}; 
+	return [expr $x*[fac [expr $x-1]]]
+	}
+puts "5! = [fac 5]"
+
+dict numbers put alice "FAIL"  
+dict numbers put alice 1111222 # Replace alice's number with something sane
+dict numbers put bob 2222333
+dict numbers put carol 3333444
+dict numbers put dwayne 5555666
+dict numbers put edgar 6666777
+dict numbers foreach k v do {puts "$k's number is $v"}
+dict numbers remove alice
+puts "** After removing alice:"
+dict numbers foreach k v do {puts "$k's number is $v"}
+
+set a hello
+set b world
+if {eq $a $b} {puts FAIL} else {puts WIN}
+if {ne $a $b} {puts WIN} else {puts FAIL}
+if {eq $a $a} {puts WIN} else {puts FAIL}
+if {ne $b $b} {puts FAIL} else {puts WIN}
