@@ -520,6 +520,10 @@ const char *fiz_get_var(Fiz *F, const char *name) {
 
 void fiz_set_var(Fiz *F, const char *name, const char *value) {
     assert(F->callframe);
+    /* Delete the var if it's already defined */
+    void* v = ht_delete(F->callframe->vars, name);
+    if(v) free(v);
+    /* Insert the value to the variable list */
     ht_insert(F->callframe->vars, name, strdup(value));
 }
 
