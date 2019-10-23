@@ -11,6 +11,41 @@
 #include <ctype.h>
 #include <setjmp.h>
 #include <assert.h>
+#include <stdint.h>
+
+/* 
+ * For integer based math, define FIZ_INTEGER_EXPR symbol in the whole project or
+ * use add MATH=int flag when running make. If not defined, double based math is used.
+ *
+ * Double based math supports numbers in range of +/- 1000000000000000000
+ * And up to 8 decimals precision in printing and comparasion
+ */
+
+#ifdef FIZ_INTEGER_EXPR
+    typedef int number;
+    inline static number operator_modulo(const number a, const number b) { return a % b; }
+    inline static char operator_equals(const number a, const number b) { return a == b; }
+    inline static char operator_gt(const number a, const number b) { return a == b; }
+#else
+    #include <math.h>
+    typedef double number;
+    inline static number operator_modulo(const number a, const number b) { return fmod(a,b); }
+    inline static char operator_equals(const number a, const number b) 
+    {
+        const double epsilon = 0.00000001;
+        const number fabsa = fabs(a);
+        const number fabsb = fabs(b);
+        number largest = 1.0;
+
+        if(fabsa > largest) largest = fabsa;
+        if(fabsb > largest) largest = fabsb;
+        return fabs(a - b) <= epsilon * largest;
+    }
+    inline static char operator_gt(const number a, const number b) 
+    { 
+        return a > b && !operator_equals(a, b); 
+    }
+#endif
 
 struct expr_handler {
     const char *str, *prev;
@@ -25,7 +60,7 @@ static void do_error(struct expr_handler *eh, const char *msg) {
 
 static char getnext(struct expr_handler *h) {
     char c;
-    while(isspace(h->str[0])) h->str++;
+    while(isspace((int)h->str[0])) h->str++;
     h->prev = h->str;
     c = h->str[0];
     h->str++;
@@ -45,14 +80,14 @@ static void reset(struct expr_handler *h) {
 }
 
 /* Prototypes for the recursive descent parser's functions defined below */
-static int or(struct expr_handler *h);
-static int and(struct expr_handler *h);
-static int not(struct expr_handler *h);
-static int comp(struct expr_handler *h);
-static int term(struct expr_handler *h);
-static int factor(struct expr_handler *h);
-static int unary(struct expr_handler *h);
-static int atom(struct expr_handler *h);
+static number or(struct expr_handler *h);
+static number and(struct expr_handler *h);
+static number not(struct expr_handler *h);
+static number comp(struct expr_handler *h);
+static number term(struct expr_handler *h);
+static number factor(struct expr_handler *h);
+static number unary(struct expr_handler *h);
+static number atom(struct expr_handler *h);
 
 /* Entry point for the expression evaluator.
  * - 'str' contains the expression to be parsed.
@@ -61,8 +96,8 @@ static int atom(struct expr_handler *h);
  *   the expression was parsed successfully, otherwise *err will
  *   point to a string containing an error message.
  */
-int expr(const char *str, const char **err) {
-    int n;
+number expr(const char *str, const char **err) {
+    number n;
     const char *dummy;
     struct expr_handler eh;
     if(err) {
@@ -84,8 +119,8 @@ int expr(const char *str, const char **err) {
 /*
  * Recursive descent starts here.
  */
-static int or(struct expr_handler *h) {
-    int n = and(h), r;
+static number or(struct expr_handler *h) {
+    number n = and(h), r;
     while(getnext(h) == '|' && peeknext(h) == '|') {
         gobblenext(h);
         /* Short-circuit caught me here:
@@ -104,8 +139,8 @@ static int or(struct expr_handler *h) {
     return n;
 }
 
-static int and(struct expr_handler *h) {
-    int n = not(h), r;
+static number and(struct expr_handler *h) {
+    number n = not(h), r;
     while(getnext(h) == '&' && peeknext(h) == '&') {
         gobblenext(h);
         /* potential short-circuit problem; see or() above */
@@ -116,30 +151,30 @@ static int and(struct expr_handler *h) {
     return n;
 }
 
-static int not(struct expr_handler *h) {
+static number not(struct expr_handler *h) {
     if(getnext(h) == '!')
         return !comp(h);
     reset(h);
     return comp(h);
 }
 
-static int comp(struct expr_handler *h) {
-    int n = term(h);
+static number comp(struct expr_handler *h) {
+    number n = term(h);
     char c = getnext(h);
     if(c == '=' || c == '>' || c == '<' || (c == '!' && peeknext(h) == '=')) {
         if(h->str[0] == '=') {
             gobblenext(h);
             switch(c) {
-                case '=' : return n == term(h);
-                case '>' : return n >= term(h);
-                case '<' : return n <= term(h);
-                case '!' : return n != term(h);
+                case '=' : return operator_equals(n, term(h));
+                case '>' : return !operator_gt(term(h), n); //n >= term(h);
+                case '<' : return !operator_gt(n, term(h)); //n <= term(h);
+                case '!' : return !operator_equals(n, term(h));
             }
         } else {
             switch(c) {
-                case '=' : return n == term(h);
-                case '>' : return n > term(h);
-                case '<' : return n < term(h);
+                case '=' : return operator_equals(n, term(h));
+                case '>' : return operator_gt(n, term(h)); // n > term(h);
+                case '<' : return operator_gt(term(h), n); //n < term(h);
             }
         }
     } else
@@ -147,8 +182,8 @@ static int comp(struct expr_handler *h) {
     return n;
 }
 
-static int term(struct expr_handler *h) {
-    int n = factor(h), c;
+static number term(struct expr_handler *h) {
+    number n = factor(h), c;
     while((c=getnext(h)) == '+' || c == '-') {
         if(c == '+')
             n += factor(h);
@@ -159,10 +194,10 @@ static int term(struct expr_handler *h) {
     return n;
 }
 
-static int factor(struct expr_handler *h) {
-    int n = unary(h), c;
+static number factor(struct expr_handler *h) {
+    number n = unary(h), c;
     while((c=getnext(h)) == '*' || c == '/' || c == '%') {
-        int x = unary(h);
+        number x = unary(h);
         if(c == '*')
             n *= x;
         else {
@@ -170,15 +205,15 @@ static int factor(struct expr_handler *h) {
             if(c == '/')
                 n /= x;
             else
-                n %= x;
+                n = operator_modulo(n, x);
         }
     }
     reset(h);
     return n;
 }
 
-static int unary(struct expr_handler *h) {
-    int c = getnext(h);
+static number unary(struct expr_handler *h) {
+    number c = getnext(h);
     if(c == '-' || c == '+') {
         if(c == '-')
             return -atom(h);
@@ -188,24 +223,42 @@ static int unary(struct expr_handler *h) {
     return atom(h);
 }
 
-static int atom(struct expr_handler *h) {
-    int n = 0;
-
+static number atom(struct expr_handler *h) {
     if(getnext(h) == '(') {
-        n = or(h);
+        number n = or(h);
         if(getnext(h) != ')')
             do_error(h, "missing ')'");
         return n;
     }
     reset(h);
-    while(isspace(h->str[0])) h->str++;
-    if(!isdigit(h->str[0]))
+    while(isspace((int)h->str[0])) h->str++;
+    if(!isdigit((int)h->str[0]))
         do_error(h, "number expected");
-    while(isdigit(h->str[0])) {
+    uint64_t n = 0;
+    while(isdigit((int)h->str[0])) {
+        if(n >= 1000000000000000000L)
+            do_error(h, "number too large");
         n = n * 10 + (h->str[0] - '0');
         h->str++;
     }
-    return n;
+    #ifndef FIZ_INTEGER_EXPR
+    if (peeknext(h) == '.') 
+    {
+        h->str++;
+        if(!isdigit((int)h->str[0]))
+            do_error(h, "floating point part expected");
+        uint64_t m = 0, mbase = 1;
+        while(isdigit((int)h->str[0])) {
+            if(mbase >= 1000000000000000000L) 
+                do_error(h, "number fractional part too large");
+            m = m * 10 + (h->str[0] - '0');
+            mbase *= 10;
+            h->str++;
+        }
+        return (number)n + (number)m / (number)mbase;
+    }
+    #endif
+    return (number)n;
 }
 
 /**********************************************************************
@@ -214,7 +267,8 @@ static int atom(struct expr_handler *h) {
 #ifdef TEST
 #include <stdio.h>
 int main(int argc, char *argv[]) {
-    int i, r;
+    int i;
+    number r;
     const char *err;
     for(i = 1; i < argc; i++) {
         r = expr(argv[i], &err);

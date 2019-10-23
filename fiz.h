@@ -109,10 +109,17 @@ const char *fiz_get_var(Fiz *F, const char *name);
  */
 char *fiz_readfile(const char *filename);
 
+#ifdef FIZ_INTEGER_EXPR
 /*@ int expr(const char *str, const char **err);
  *# The expression evaluator used with the {{expr}} command.
  *# See {{expr.c}} for details */
 int expr(const char *str, const char **err);
+#else
+/*@ double expr(const char *str, const char **err);
+ *# The expression evaluator used with the {{expr}} command.
+ *# See {{expr.c}} for details */
+double expr(const char *str, const char **err);
+#endif
 
 /*@ char *fiz_substitute(Fiz *F, const char *s);
  *# Performs $variable substitution on a string. It also evaluates
