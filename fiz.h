@@ -23,6 +23,8 @@ typedef struct fiz {
 	struct hash_tbl *dicts;
 	struct fiz_callframe *callframe;
 	char *return_val;
+	char const* last_statement_begin;
+	char const* last_statement_end;
 } Fiz;
 
 /*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
@@ -157,3 +159,10 @@ void fiz_dict_delete(Fiz *F, const char *dict, const char *key);
  *#
  */
 const char *fiz_dict_next(Fiz *F, const char *dict, const char *key);
+
+/*@ char *fiz_get_last_statement(Fiz *F);
+ *# Returns last statement that was executed by the engine,
+ *# good for diagnostics or error reporting
+ *# The returned string is dynamic, so it must be {{free()}}'ed afterwards
+ */
+char *fiz_get_last_statement(Fiz *F);
