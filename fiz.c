@@ -152,7 +152,7 @@ static enum FI_CODE parse_quote(Fiz *F, FizParser *FI, char term) {
             const char *p, *val;
             char *name;
             p = ++FI->txt;
-            while(isalnum(*FI->txt)) FI->txt++;
+            while(isalnum((int)*FI->txt)) FI->txt++;
             if(FI->txt == p) {
                 fiz_set_return(F, "Identifier expected after $");
                 return FI_ERR;
@@ -258,7 +258,7 @@ static enum FI_CODE get_word(Fiz *F, FizParser *FI) {
 
 restart:
     /* Remove whitespace */
-    while(isspace(FI->txt[0])) {
+    while(isspace((int)FI->txt[0])) {
         if(FI->txt[0] == '\n') {
             FI->txt++;
             return FI_EOS;
@@ -310,7 +310,7 @@ restart:
                 const char *p, *val;
                 char *name;
                 p = ++FI->txt;
-                while(isalnum(*FI->txt)) FI->txt++;
+                while(isalnum((int)*FI->txt)) FI->txt++;
                 if(FI->txt == p) {
                     fiz_set_return(F, "Identifier expected after $");
                     return FI_ERR;
@@ -335,7 +335,7 @@ restart:
 
             add_char(FI, c);
             FI->txt++;
-        } while(FI->txt[0] && !isspace(FI->txt[0]));
+        } while(FI->txt[0] && !isspace((int)FI->txt[0]));
         return FI_WORD;
     }
     return FI_ERR; /* keeps some compilers happy */
@@ -470,10 +470,10 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
             int i = 1, brk = 0;
             add_callframe(F);
             for(n=pars; !brk && *n; n++, i++) {
-                while(n[0] && isspace(n[0])) n++;
+                while(n[0] && isspace((int)n[0])) n++;
                 if(!n[0]) break;
                 c = n;
-                while(n[0] && !isspace(n[0])) n++;
+                while(n[0] && !isspace((int)n[0])) n++;
                 if(!n[0]) brk = 1;
                 n[0] = '\0';
                 if(i < argc)
