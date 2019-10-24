@@ -368,11 +368,15 @@ static void add_bifs(Fiz *F);
 
 Fiz *fiz_create() {
     Fiz *F = malloc(sizeof *F);
+    if(!F) 
+        return NULL;
     F->callframe = NULL;
     add_callframe(F);
     F->commands = ht_create(0);
     F->dicts = ht_create(16);
     F->return_val = strdup("");
+    F->last_statement_begin = NULL;
+    F->last_statement_end = NULL;
     add_bifs(F);
     return F;
 }
@@ -420,8 +424,15 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
     init_parser(&FI, str);
     argv = calloc(a_argc, sizeof *argv);
 
+    const char top_scope = !F->last_statement_begin;
+
     for(;;) { /* For all the statements in the input */
         struct proc *p;
+
+        if(top_scope) {
+            F->last_statement_begin = FI.txt;
+            F->last_statement_end = NULL;
+        }
 
         fic = get_word(F, &FI); /* get the command */
         if(fic == FI_EOI) break;
@@ -437,6 +448,9 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
             }
             argv[argc++] = strdup(FI.word);
         }
+
+        F->last_statement_end = FI.txt;
+
         if(fic == FI_ERR)
             goto clean_error;
 
@@ -471,8 +485,17 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
                 delete_callframe(F);
                 goto clean_error;
             }
+			const char* last_begin = F->last_statement_begin;
+			const char* last_end = F->last_statement_end;
+			F->last_statement_begin = NULL;
+			F->last_statement_end = NULL;
             rc = fiz_exec(F, p->fun.proc.body);
             if(rc == FIZ_RETURN) rc = FIZ_OK;
+			if (rc == FIZ_OK)
+			{
+				F->last_statement_begin = last_begin;
+				F->last_statement_end = last_end;
+			}
             delete_callframe(F);
         }
         clear_argv(argc, argv);

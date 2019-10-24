@@ -43,7 +43,11 @@ int main(int argc, char *argv[]) {
         }
         c = fiz_exec(F, script);
         if(c == FIZ_ERROR)
-            fprintf(stderr, "error: %s\n", fiz_get_return(F));
+        {
+            char* last_statement = fiz_get_last_statement(F);
+            fprintf(stderr, "error: %s in \"%s\"\n", fiz_get_return(F), last_statement);
+            free(last_statement);
+        }
         free(script);
     }
 

@@ -195,3 +195,19 @@ void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "dict", aux_dict, NULL);
     fiz_add_func(F, "include", aux_include, NULL);
 }
+
+char *fiz_get_last_statement(Fiz *F) {
+    if (!F->last_statement_begin || !F->last_statement_end)
+        return strdup("(none)");
+    int length = F->last_statement_end - F->last_statement_begin;
+    char* last_statement = strndup(F->last_statement_begin, length);
+    // Strip newline and whitespace at end of statement
+    for (int i = length - 1; i >= 0; i--) {
+        char ch = last_statement[i];
+        if (ch == ' ' || ch == '\t' || ch == '\n')
+            last_statement[i] = '\0';
+        else 
+            break;
+    }
+    return last_statement;
+}
