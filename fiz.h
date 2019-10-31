@@ -25,10 +25,10 @@ typedef struct fiz {
 	char *return_val;
 } Fiz;
 
-/*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
+/*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_OOM, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
  *# Values that can be returned by functions implementing the various commands.
  */
-typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
+typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_OOM, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
 
 /*@ typedef Fiz_Code (*fiz_func)(Fiz *f, int argc, char **argv, void *data);
  *# Prototype for C-functions that can be added to the interpreter.
@@ -136,6 +136,11 @@ char *fiz_substitute(Fiz *F, const char *s);
  *# See any of the built-in functions for its usage.
  */
 Fiz_Code fiz_argc_error(Fiz *F, const char *cmd, int exp);
+
+/*@ Fiz_Code fiz_oom_error(Fiz *F);
+ *# Helper function to report out of memory errors
+ */
+Fiz_Code fiz_oom_error(Fiz *F);
 
 /*2 Functions for Manipulating Dictionaries
  */

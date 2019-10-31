@@ -70,7 +70,7 @@ static int init_parser(FizParser *FI, const char *txt) {
     FI->word = malloc(FI->a_size);
     FI->w_size = 0;
     FI->txt = txt;
-    return 1;
+    return (FI->word) ? 1 : 0;
 }
 
 static void destroy_parser(FizParser *FI) {
@@ -368,6 +368,8 @@ static void add_bifs(Fiz *F);
 
 Fiz *fiz_create() {
     Fiz *F = malloc(sizeof *F);
+    if(!F) 
+        return NULL;
     F->callframe = NULL;
     add_callframe(F);
     F->commands = ht_create(0);
@@ -621,6 +623,12 @@ Fiz_Code fiz_argc_error(Fiz *F, const char *cmd, int exp) {
     return FIZ_ERROR;
 }
 
+Fiz_Code fiz_oom_error(Fiz *F) {
+    // empty string, better not allocate anything large
+    fiz_set_return(F, "");
+    return FIZ_OOM;
+}
+
 static Fiz_Code bif_set(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
@@ -680,7 +688,7 @@ static Fiz_Code bif_while(Fiz *F, int argc, char **argv, void *data) {
         if(!atoi(fiz_get_return(F))) break;
         fc = fiz_exec(F, argv[2]);
         if(fc == FIZ_BREAK) break;
-        else if(fc == FIZ_ERROR) return FIZ_ERROR;
+        else if(fc == FIZ_ERROR || fc == FIZ_OOM) return fc;
     }
     return FIZ_OK;
 }
