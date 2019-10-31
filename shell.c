@@ -30,6 +30,8 @@ int main(int argc, char *argv[]) {
                 printf("ok: %s\n", fiz_get_return(F));
             } else if(c == FIZ_ERROR) {
                 fprintf(stderr, "error: %s\n", fiz_get_return(F));
+            } else if(c == FIZ_OOM) {
+                fprintf(stderr, "out of memory error\n");
             }
             printf("%s", PROMPT);
         }
@@ -48,6 +50,8 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "error: %s in \"%s\"\n", fiz_get_return(F), last_statement);
             free(last_statement);
         }
+        else if(c == FIZ_OOM)
+            fprintf(stderr, "out of memory error\n");
         free(script);
     }
 

@@ -27,10 +27,10 @@ typedef struct fiz {
 	char const* last_statement_end;
 } Fiz;
 
-/*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
+/*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_OOM, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
  *# Values that can be returned by functions implementing the various commands.
  */
-typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
+typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_OOM, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
 
 /*@ typedef Fiz_Code (*fiz_func)(Fiz *f, int argc, char **argv, void *data);
  *# Prototype for C-functions that can be added to the interpreter.
@@ -111,10 +111,17 @@ const char *fiz_get_var(Fiz *F, const char *name);
  */
 char *fiz_readfile(const char *filename);
 
+#ifdef FIZ_INTEGER_EXPR
 /*@ int expr(const char *str, const char **err);
  *# The expression evaluator used with the {{expr}} command.
  *# See {{expr.c}} for details */
 int expr(const char *str, const char **err);
+#else
+/*@ double expr(const char *str, const char **err);
+ *# The expression evaluator used with the {{expr}} command.
+ *# See {{expr.c}} for details */
+double expr(const char *str, const char **err);
+#endif
 
 /*@ char *fiz_substitute(Fiz *F, const char *s);
  *# Performs $variable substitution on a string. It also evaluates
@@ -131,6 +138,11 @@ char *fiz_substitute(Fiz *F, const char *s);
  *# See any of the built-in functions for its usage.
  */
 Fiz_Code fiz_argc_error(Fiz *F, const char *cmd, int exp);
+
+/*@ Fiz_Code fiz_oom_error(Fiz *F);
+ *# Helper function to report out of memory errors
+ */
+Fiz_Code fiz_oom_error(Fiz *F);
 
 /*2 Functions for Manipulating Dictionaries
  */

@@ -70,7 +70,7 @@ static int init_parser(FizParser *FI, const char *txt) {
     FI->word = malloc(FI->a_size);
     FI->w_size = 0;
     FI->txt = txt;
-    return 1;
+    return (FI->word) ? 1 : 0;
 }
 
 static void destroy_parser(FizParser *FI) {
@@ -152,7 +152,7 @@ static enum FI_CODE parse_quote(Fiz *F, FizParser *FI, char term) {
             const char *p, *val;
             char *name;
             p = ++FI->txt;
-            while(isalnum(*FI->txt)) FI->txt++;
+            while(isalnum((int)*FI->txt)) FI->txt++;
             if(FI->txt == p) {
                 fiz_set_return(F, "Identifier expected after $");
                 return FI_ERR;
@@ -258,7 +258,7 @@ static enum FI_CODE get_word(Fiz *F, FizParser *FI) {
 
 restart:
     /* Remove whitespace */
-    while(isspace(FI->txt[0])) {
+    while(isspace((int)FI->txt[0])) {
         if(FI->txt[0] == '\n') {
             FI->txt++;
             return FI_EOS;
@@ -310,7 +310,7 @@ restart:
                 const char *p, *val;
                 char *name;
                 p = ++FI->txt;
-                while(isalnum(*FI->txt)) FI->txt++;
+                while(isalnum((int)*FI->txt)) FI->txt++;
                 if(FI->txt == p) {
                     fiz_set_return(F, "Identifier expected after $");
                     return FI_ERR;
@@ -335,7 +335,7 @@ restart:
 
             add_char(FI, c);
             FI->txt++;
-        } while(FI->txt[0] && !isspace(FI->txt[0]));
+        } while(FI->txt[0] && !isspace((int)FI->txt[0]));
         return FI_WORD;
     }
     return FI_ERR; /* keeps some compilers happy */
@@ -470,10 +470,10 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
             int i = 1, brk = 0;
             add_callframe(F);
             for(n=pars; !brk && *n; n++, i++) {
-                while(n[0] && isspace(n[0])) n++;
+                while(n[0] && isspace((int)n[0])) n++;
                 if(!n[0]) break;
                 c = n;
-                while(n[0] && !isspace(n[0])) n++;
+                while(n[0] && !isspace((int)n[0])) n++;
                 if(!n[0]) brk = 1;
                 n[0] = '\0';
                 if(i < argc)
@@ -644,6 +644,12 @@ Fiz_Code fiz_argc_error(Fiz *F, const char *cmd, int exp) {
     return FIZ_ERROR;
 }
 
+Fiz_Code fiz_oom_error(Fiz *F) {
+    // empty string, better not allocate anything large
+    fiz_set_return(F, "");
+    return FIZ_OOM;
+}
+
 static Fiz_Code bif_set(Fiz *F, int argc, char **argv, void *data) {
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
@@ -703,7 +709,7 @@ static Fiz_Code bif_while(Fiz *F, int argc, char **argv, void *data) {
         if(!atoi(fiz_get_return(F))) break;
         fc = fiz_exec(F, argv[2]);
         if(fc == FIZ_BREAK) break;
-        else if(fc == FIZ_ERROR) return FIZ_ERROR;
+        else if(fc == FIZ_ERROR || fc == FIZ_OOM) return fc;
     }
     return FIZ_OK;
 }

@@ -10,6 +10,10 @@ CFLAGS = -Wall -Werror -pedantic -O2 -DNDEBUG
 LFLAGS = -s -fno-exceptions -lm
 endif
 
+ifeq ($(MATH),int)
+CFLAGS := $(CFLAGS) -DFIZ_INTEGER_EXPR
+endif
+
 all: fiz docs
 
 debug:
