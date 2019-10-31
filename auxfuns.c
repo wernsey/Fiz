@@ -13,6 +13,7 @@
 
 #include "fiz.h"
 
+#ifndef FIZ_DISABLE_INCLUDE_FILES
 char *fiz_readfile(const char *filename) {
     FILE *f;
     long len,r;
@@ -38,6 +39,7 @@ char *fiz_readfile(const char *filename) {
     str[len] = '\0';
     return str;
 }
+#endif
 
 static Fiz_Code aux_puts(Fiz  *F, int argc, char **argv, void *data) {
     if(argc != 2)
@@ -211,6 +213,7 @@ static Fiz_Code aux_dict(Fiz *F, int argc, char **argv, void *data) {
     return FIZ_OK;
 }
 
+#ifndef FIZ_DISABLE_INCLUDE_FILES
 static Fiz_Code aux_include(Fiz *F, int argc, char **argv, void *data) {
     Fiz_Code rc;
     char *str;
@@ -225,6 +228,7 @@ static Fiz_Code aux_include(Fiz *F, int argc, char **argv, void *data) {
     free(str);
     return rc;
 }
+#endif
 
 void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "puts", aux_puts, NULL);
@@ -234,7 +238,9 @@ void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "incr", aux_incr, NULL);
     fiz_add_func(F, "decr", aux_incr, NULL);
     fiz_add_func(F, "dict", aux_dict, NULL);
+#ifndef FIZ_DISABLE_INCLUDE_FILES
     fiz_add_func(F, "include", aux_include, NULL);
+#endif
 }
 
 char *fiz_get_last_statement(Fiz *F) {

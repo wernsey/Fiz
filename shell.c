@@ -4,6 +4,7 @@
  * This is free and unencumbered software released into the public domain.
  * http://unlicense.org/
  */
+#ifndef FIZ_DISABLE_INCLUDE_FILES
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -58,3 +59,4 @@ int main(int argc, char *argv[]) {
     fiz_destroy(F);
     return 0;
 }
+#endif
