@@ -32,3 +32,15 @@ I took some inspiration (like how the callframes are handled and several of the
 API functions) from Salvatore Sanfilippo's Picol Tcl interpreter, which can be 
 found at http://antirez.com/page/picol. This is, however, a new implementation.
 
+
+## Compile time flags
+
+To make Fiz usable in different configurations, some compile time flags have
+been added. Define these in your environment for the desired effect.
+
+* `FIZ_DISABLE_INCLUDE_FILES` - disables `fiz_readfile` function, `include`
+  command and the interactive shell. Provided for embedding into other 
+  applications
+
+* `FIZ_INTEGER_EXPR` - changes the floating point expression evaluation
+  to use integers
