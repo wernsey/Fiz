@@ -58,10 +58,7 @@ static Fiz_Code aux_expr(Fiz *F, int argc, char **argv, void *data) {
         len += strlen(argv[i]);
     e = malloc(len+1);
     if(!e)
-    {
-        fiz_set_return_ex(F, "expr allocation error");
-        return FIZ_ERROR;
-    }
+        return fiz_oom_error(F);
     e[0] = '\0';
     for(i = 1; i < argc; i++)
         strcat(e, argv[i]);
@@ -78,22 +75,41 @@ static Fiz_Code aux_expr(Fiz *F, int argc, char **argv, void *data) {
     }
 #ifdef FIZ_INTEGER_EXPR
     fiz_set_return_ex(F, "%d", result);
+    free(e);
+    return FIZ_OK;
 #else
     const int numsize = 30;
     char numstr[30];
     snprintf(numstr, numsize, "%.9f", result);
-    // trim trailing zeros and dot if is an integer
-    for(int c = strlen(numstr) - 1; c > 0; c--)
-    {
-        if(numstr[c] == '0' || numstr[c] == '.')
-            numstr[c] = '\0';
-        else
-            break;
-    }
+
+    // trim trailing zeros and dot
+	char hasDot = 0;
+	for (int c = strlen(numstr) - 1; c > 0; c--) {
+		if (numstr[c] == '.') {
+			hasDot = 1;
+			break;
+		}
+	}
+	if (hasDot) {
+		for (int c = strlen(numstr) - 1; c > 0; c--)
+		{
+			if (numstr[c] == '0') {	//< trim trailing zeroes only after dot 
+				numstr[c] = '\0';
+			}
+			else if (numstr[c] == '.') { //< if dot found as last char remove it and stop trimming
+				numstr[c] = '\0';
+				break;
+			}
+			else { //< if non dot, non zero value found stop trimming
+				break;
+			}
+		}
+	}
+
     fiz_set_return(F, numstr);
     free(e);
-#endif  
     return FIZ_OK;
+#endif  
 }
 
 static Fiz_Code aux_eqne(Fiz *F, int argc, char **argv, void *data) {
