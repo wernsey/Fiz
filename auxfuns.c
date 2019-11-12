@@ -49,39 +49,6 @@ static Fiz_Code aux_puts(Fiz  *F, int argc, char **argv, void *data) {
     return FIZ_OK;
 }
 
-void fiz_set_return_normalized_double(Fiz* F, const double result)
-{
-    const int numsize = 30;
-    char numstr[30];
-    snprintf(numstr, numsize, "%.9f", result);
-
-    // trim trailing zeros and dot
-    char hasDot = 0;
-    for (int c = strlen(numstr) - 1; c > 0; c--) {
-        if (numstr[c] == '.') {
-            hasDot = 1;
-            break;
-        }
-    }
-    if (hasDot) {
-        for (int c = strlen(numstr) - 1; c > 0; c--)
-        {
-            if (numstr[c] == '0') {    //< trim trailing zeroes only after dot 
-                numstr[c] = '\0';
-            }
-            else if (numstr[c] == '.') { //< if dot found as last char remove it and stop trimming
-                numstr[c] = '\0';
-                break;
-            }
-            else { //< if non dot, non zero value found stop trimming
-                break;
-            }
-        }
-    }
-
-    fiz_set_return(F, numstr);
-}
-
 static Fiz_Code aux_expr(Fiz *F, int argc, char **argv, void *data) {
     char *e;
     const char *err;
@@ -98,14 +65,22 @@ static Fiz_Code aux_expr(Fiz *F, int argc, char **argv, void *data) {
     for(i = 1; i < argc; i++)
         strcat(e, argv[i]);
     assert(strlen(e) == len);
+#ifdef FIZ_INTEGER_EXPR
+    int result = expr(e, &err);
+#else
     double result = expr(e, &err);
+#endif
     if(err) {
         fiz_set_return_ex(F, "expr: %s in '%s'", err, e);
         free(e);
         return FIZ_ERROR;
     }
-	free(e);
-	fiz_set_return_normalized_double(F, result);
+    free(e);
+#ifdef FIZ_INTEGER_EXPR
+    fiz_set_return_ex(F, "%d", result);
+#else
+    fiz_set_return_normalized_double(F, result);
+#endif
     return FIZ_OK;
 }
 
@@ -252,4 +227,37 @@ char *fiz_get_last_statement(Fiz *F) {
             break;
     }
     return last_statement;
+}
+
+void fiz_set_return_normalized_double(Fiz* F, const double result)
+{
+    const int numsize = 30;
+    char numstr[30];
+    snprintf(numstr, numsize, "%.9f", result);
+
+    // trim trailing zeros and dot
+    char hasDot = 0;
+    for (int c = strlen(numstr) - 1; c > 0; c--) {
+        if (numstr[c] == '.') {
+            hasDot = 1;
+            break;
+        }
+    }
+    if (hasDot) {
+        for (int c = strlen(numstr) - 1; c > 0; c--)
+        {
+            if (numstr[c] == '0') {    //< trim trailing zeroes only after dot 
+                numstr[c] = '\0';
+            }
+            else if (numstr[c] == '.') { //< if dot found as last char remove it and stop trimming
+                numstr[c] = '\0';
+                break;
+            }
+            else { //< if non dot, non zero value found stop trimming
+                break;
+            }
+        }
+    }
+
+    fiz_set_return(F, numstr);
 }

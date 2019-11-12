@@ -178,3 +178,9 @@ const char *fiz_dict_next(Fiz *F, const char *dict, const char *key);
  *# The returned string is dynamic, so it must be {{free()}}'ed afterwards
  */
 char *fiz_get_last_statement(Fiz *F);
+
+/*@ void fiz_set_return_normalized_double(Fiz* F, const double result);
+ *# Sets the return value to double floating point number, 
+ *# removing not needed trailing zeroes.
+ */
+void fiz_set_return_normalized_double(Fiz* F, const double result);
