@@ -651,6 +651,15 @@ Fiz_Code fiz_oom_error(Fiz *F) {
 }
 
 static Fiz_Code bif_set(Fiz *F, int argc, char **argv, void *data) {
+    if(argc == 2) {
+        const char* val = fiz_get_var(F, argv[1]);
+        if (!val) {
+            fiz_set_return_ex(F, "%s not found", argv[1]);
+            return FIZ_ERROR;
+        }
+        fiz_set_return(F, val);
+        return FIZ_OK;
+    }
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
     fiz_set_var(F, argv[1], argv[2]);
