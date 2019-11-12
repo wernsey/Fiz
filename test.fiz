@@ -38,3 +38,68 @@ if {eq $a $b} {puts FAIL} else {puts WIN}
 if {ne $a $b} {puts WIN} else {puts FAIL}
 if {eq $a $a} {puts WIN} else {puts FAIL}
 if {ne $b $b} {puts FAIL} else {puts WIN}
+
+
+
+
+set i 1
+proc set_i_to_2 {} {
+	# puts "local $i" --- this would be an error
+	set i 2 
+	puts "local $i"
+}
+proc set_i_to_3 {} {
+	global i
+	puts "local $i"
+	set i 3 
+	puts "local $i"
+}
+
+puts "top $i"
+assert { eq $i 1 }
+# prints "top 1"
+
+set_i_to_2
+# prints "local 2"
+
+puts "top $i"
+assert { eq $i 1 }
+# prints "top 1"
+# note: was not set to "2" - it was a local variable
+
+set_i_to_3
+# prints "local 1"
+# prints "local 3"
+
+puts "top $i"
+assert { eq $i 3 }
+# prints "top 3"
+# note: was not set to "3" - it was a global variable
+
+
+
+set i 0
+proc increment_i {} {
+	global i
+	set i [expr $i + 1]
+}
+increment_i
+increment_i
+increment_i
+increment_i
+increment_i
+puts "i = $i"
+assert { eq $i 5 }
+# prints "i = 5"
+
+
+
+proc set_never_used_before_global {} {
+	global vvv
+	set vvv 123
+}
+
+set_never_used_before_global
+
+puts $vvv
+assert { eq $vvv 123 }

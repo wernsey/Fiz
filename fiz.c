@@ -41,6 +41,11 @@ struct fiz_callframe {
     struct hash_tbl *vars;
 };
 
+/**
+ * Special object whose address is used to mark a variable as a global.
+ */
+static char global_var_marker = '\0';
+
 /*======================================================================
  * Data structure for the parser used internally.
 ======================================================================*/
@@ -353,6 +358,7 @@ static void add_callframe(Fiz *F)  {
 }
 
 static void free_var(const char *key, void *val) {
+    if(val == &global_var_marker) return;
 	free(val);
 }
 
@@ -536,18 +542,39 @@ void fiz_set_return_ex(Fiz *F, const char *fmt, ...) {
     fiz_set_return(F, buffer);
 }
 
+static struct fiz_callframe* fiz_global_callframe(Fiz *F) {
+    struct fiz_callframe* cf = F->callframe;
+    while(cf->parent)
+        cf = cf->parent;
+    return cf;
+}
+
 const char *fiz_get_var(Fiz *F, const char *name) {
     assert(F->callframe);
-    return ht_find(F->callframe->vars, name);
+    const char* found = ht_find(F->callframe->vars, name);
+    if (found == &global_var_marker)
+        found = ht_find(fiz_global_callframe(F)->vars, name);
+    return found;
 }
 
 void fiz_set_var(Fiz *F, const char *name, const char *value) {
     assert(F->callframe);
-    /* Delete the var if it's already defined */
-    void* v = ht_delete(F->callframe->vars, name);
-    if(v) free_var(name, v);
+    /* Get the current value to check if it's not a global */
+    const char* current = ht_find(F->callframe->vars, name);
+    struct fiz_callframe* callframe;
+    if(current == &global_var_marker)
+    {
+        callframe = fiz_global_callframe(F);
+    }
+    else
+    {
+        /* Delete the var if it's already defined */
+        void* v = ht_delete(F->callframe->vars, name);
+        if(v) free_var(name, v);
+        callframe = F->callframe;
+    }
     /* Insert the value into the variable list */
-    ht_insert(F->callframe->vars, name, strdup(value));
+    ht_insert(callframe->vars, name, strdup(value));
 }
 
 void fiz_set_var_ex(Fiz *F, const char *name, const char *fmt, ...) {
@@ -730,6 +757,25 @@ static Fiz_Code bif_cntrl(Fiz *F, int argc, char **argv, void *data) {
     return FIZ_BREAK;
 }
 
+static Fiz_Code bif_global(Fiz *F, int argc, char **argv, void *data) {
+    assert(F->callframe);
+    if(argc != 2)
+        return fiz_argc_error(F, argv[0], 2);
+    const char* name = argv[1];
+    /* Show error if trying to execute from global context */
+    if(F->callframe->parent == NULL) {
+        fiz_set_return(F, "Cannot call global from global context");
+        return FIZ_ERROR;
+    }
+    /* Delete the var if it's already defined */
+    void* v = ht_delete(F->callframe->vars, name);
+    if(v) free_var(name, v);
+    /* Insert flag marking this as a global */
+    ht_insert(F->callframe->vars, name, &global_var_marker);
+    fiz_set_return_ex(F, "%d", 1);
+    return FIZ_OK;
+}
+
 static void add_bifs(Fiz *F) {
     fiz_add_func(F, "set", bif_set, NULL);
     fiz_add_func(F, "proc", bif_proc, NULL);
@@ -738,4 +784,6 @@ static void add_bifs(Fiz *F) {
     fiz_add_func(F, "while", bif_while, NULL);
     fiz_add_func(F, "break", bif_cntrl, NULL);
     fiz_add_func(F, "continue", bif_cntrl, NULL);
+    fiz_add_func(F, "global", bif_global, NULL);
 }
+
