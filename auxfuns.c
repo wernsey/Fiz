@@ -200,6 +200,25 @@ static Fiz_Code aux_include(Fiz *F, int argc, char **argv, void *data) {
 }
 #endif
 
+/**
+ * `assert` - makes sure that a condition is correct, otherwise throws an error
+ * Syntax:
+ * `assert <condition>`
+ * Example:
+ * `assert { expr 2 + 2 == 4 }`
+ */
+static Fiz_Code aux_assert(Fiz* F, int argc, char** argv, void* data)
+{
+    if (argc != 2)
+        return fiz_argc_error(F, argv[0], 2);
+    if (fiz_exec(F, argv[1]) != FIZ_OK) //< code returned an error
+        return FIZ_ERROR;
+    if (atoi(fiz_get_return(F))) //< code returned a truthy value, assertion passed
+        return FIZ_OK;
+    fiz_set_return_ex(F, "Assertion failed: %s", argv[1]);
+    return FIZ_ERROR;
+}
+
 void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "puts", aux_puts, NULL);
     fiz_add_func(F, "expr", aux_expr, NULL);
@@ -211,6 +230,7 @@ void fiz_add_aux(Fiz *F) {
 #ifndef FIZ_DISABLE_INCLUDE_FILES
     fiz_add_func(F, "include", aux_include, NULL);
 #endif
+    fiz_add_func(F, "assert", aux_assert, NULL);
 }
 
 char *fiz_get_last_statement(Fiz *F) {
