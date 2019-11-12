@@ -545,7 +545,7 @@ void fiz_set_var(Fiz *F, const char *name, const char *value) {
     assert(F->callframe);
     /* Delete the var if it's already defined */
     void* v = ht_delete(F->callframe->vars, name);
-    if(v) free(v);
+    if(v) free_var(name, v);
     /* Insert the value into the variable list */
     ht_insert(F->callframe->vars, name, strdup(value));
 }
@@ -674,7 +674,7 @@ static Fiz_Code bif_proc(Fiz *F, int argc, char **argv, void *data) {
     const char* const name = argv[1];
     /* Delete the proc if it's already defined */
     void* v = ht_delete(F->commands, name);
-    if(v) free(v);
+    if(v) free_proc(name, v);
     /* Insert the proc into the commands list */
     p = malloc(sizeof *p);
     p->type = FIZ_PROC;
