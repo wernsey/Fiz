@@ -14,7 +14,11 @@
 
 #include "hash.h"
 
+#ifdef FIZ_OVERRIDE_HASH_DEFAULT_SIZE
+#define DEFAULT_SIZE	 FIZ_OVERRIDE_HASH_DEFAULT_SIZE
+#else
 #define DEFAULT_SIZE	 512
+#endif
 #define MAX_SIZE		 100000
 #define FILL_FACTOR(x)	 ((x)/2)
 #define RESIZE_FACTOR(x) ((x)*2)

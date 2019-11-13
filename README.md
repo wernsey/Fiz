@@ -33,7 +33,7 @@ API functions) from Salvatore Sanfilippo's Picol Tcl interpreter, which can be
 found at http://antirez.com/page/picol. This is, however, a new implementation.
 
 
-## Compile time flags
+## Compile time flags and options
 
 To make Fiz usable in different configurations, some compile time flags have
 been added. Define these in your environment for the desired effect.
@@ -44,3 +44,8 @@ been added. Define these in your environment for the desired effect.
 
 * `FIZ_INTEGER_EXPR` - changes the floating point expression evaluation
   to use integers
+
+These options are also available:
+
+* `FIZ_OVERRIDE_HASH_DEFAULT_SIZE` - set to override default hash size (default 512)
+* 
