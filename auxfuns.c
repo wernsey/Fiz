@@ -266,14 +266,20 @@ void fiz_add_aux(Fiz *F) {
 }
 
 char *fiz_get_last_statement(Fiz *F) {
+    printf("last statement = %p...%p (%ld)\n", F->last_statement_begin, F->last_statement_end, F->last_statement_end - F->last_statement_begin);
     if (!F->last_statement_begin || !F->last_statement_end)
         return strdup("(none)");
-    int length = F->last_statement_end - F->last_statement_begin;
-    char* last_statement = strndup(F->last_statement_begin, length);
+    const char* begin = F->last_statement_begin;
+    while(*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r')
+        begin++;
+    if(*begin == '\0')
+        return strdup("(empty)");
+    int length = F->last_statement_end - begin;
+    char* last_statement = strndup(begin, length);
     // Strip newline and whitespace at end of statement
     for (int i = length - 1; i >= 0; i--) {
         char ch = last_statement[i];
-        if (ch == ' ' || ch == '\t' || ch == '\n')
+        if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
             last_statement[i] = '\0';
         else 
             break;
