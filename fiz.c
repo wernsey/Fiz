@@ -441,19 +441,14 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
     init_parser(&FI, str);
     argv = calloc(a_argc, sizeof *argv);
 
-    const char top_scope = F->callframe->parent == NULL;
-    if(top_scope) {
-        F->last_statement_begin = NULL;
-        F->last_statement_end = NULL;
-    }
+    F->last_statement_begin = NULL;
+    F->last_statement_end = NULL;
 
     for(;;) { /* For all the statements in the input */
         struct proc *p;
 
-        if(top_scope) {
-            F->last_statement_begin = FI.txt;
-            F->last_statement_end = NULL;
-        }
+        F->last_statement_begin = FI.txt;
+        F->last_statement_end = NULL;
 
         fic = get_word(F, &FI); /* get the command */
         if(fic == FI_EOI) break;
@@ -482,6 +477,8 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
             goto clean_error;
         }
 
+        const char* last_begin = F->last_statement_begin;
+        const char* last_end = F->last_statement_end;
         if(p->type == FIZ_CFUN) {
             /* External C-function */
             rc = p->fun.cfun.fun(F, argc, argv, p->fun.cfun.data);
@@ -506,18 +503,15 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
                 delete_callframe(F);
                 goto clean_error;
             }
-			const char* last_begin = F->last_statement_begin;
-			const char* last_end = F->last_statement_end;
-			F->last_statement_begin = NULL;
-			F->last_statement_end = NULL;
             rc = fiz_exec(F, p->fun.proc.body);
             if(rc == FIZ_RETURN) rc = FIZ_OK;
-			if (rc == FIZ_OK)
-			{
-				F->last_statement_begin = last_begin;
-				F->last_statement_end = last_end;
-			}
             delete_callframe(F);
+        }
+
+        if (rc != FIZ_ERROR && rc != FIZ_OOM)
+        {
+            F->last_statement_begin = last_begin;
+            F->last_statement_end = last_end;
         }
         clear_argv(argc, argv);
         if(rc != FIZ_OK) break;
@@ -802,3 +796,57 @@ static void add_bifs(Fiz *F) {
     fiz_add_func(F, "global", bif_global, NULL);
 }
 
+
+/*====================================================================
+ * Getting line numbers and ensuring part of the script is accessable
+ *====================================================================*/
+
+static int get_line_number(const char* begin, const char* end)
+{
+    int line = 1;
+    for(const char* p = begin; p < end && *p != '\0'; p++)
+        if(*p == '\n') line++;
+    return line;
+}
+
+struct find_proc_by_contents_arg { Fiz* F; const char* proc_name; int line; };
+static int find_proc_by_contents(const char *key, void *value, void *data)
+{
+    struct find_proc_by_contents_arg* arg = data;
+
+    struct proc* p = value;
+    if(p->type != FIZ_PROC) return 1;
+    const char* begin = p->fun.proc.body;
+    const char* end = begin + strlen(begin);
+    if(arg->F->last_statement_begin >= begin && arg->F->last_statement_end <= end)
+    {
+        arg->proc_name = key;
+        arg->line = get_line_number(begin, arg->F->last_statement_end);
+        return 0;
+    }
+    return 1;
+}
+
+int fiz_get_location_of_last_statement(Fiz* F, const char** proc_name, const char* body) {
+    if(body != NULL && F->last_statement_begin >= body && F->last_statement_end <= body + strlen(body)) {
+        /* Found in body */
+        int line_ = get_line_number(body, F->last_statement_begin);
+        if(proc_name != NULL)
+            *proc_name = NULL;
+        return line_;
+    }
+    else {
+        struct find_proc_by_contents_arg arg;
+        arg.F = F;
+        arg.line = 0;
+        arg.proc_name = NULL;
+        ht_foreach(F->commands, find_proc_by_contents, &arg);
+        /* Not found in proc nor body */
+        if(arg.proc_name == NULL)
+            return 0;
+        /* Found in proc */
+        if(proc_name != NULL)
+            *proc_name = arg.proc_name;
+        return arg.line;
+    }
+}

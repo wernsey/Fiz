@@ -265,15 +265,15 @@ void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "catch", aux_catch, NULL);
 }
 
-char *fiz_get_last_statement(Fiz *F) {
-    printf("last statement = %p...%p (%ld)\n", F->last_statement_begin, F->last_statement_end, F->last_statement_end - F->last_statement_begin);
+char *fiz_get_last_statement(Fiz *F, const char* body) {
+    int line = fiz_get_location_of_last_statement(F, NULL, body);
+    if(line <= 0) 
+        return strdup("(inaccessible)"); //< Probably was in dynamic scope and not allocated anymore
     if (!F->last_statement_begin || !F->last_statement_end)
         return strdup("(none)");
     const char* begin = F->last_statement_begin;
     while(*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r')
         begin++;
-    if(*begin == '\0')
-        return strdup("(empty)");
     int length = F->last_statement_end - begin;
     char* last_statement = strndup(begin, length);
     // Strip newline and whitespace at end of statement

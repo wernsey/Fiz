@@ -84,8 +84,12 @@ int main(int argc, char *argv[]) {
         c = fiz_exec(F, script);
         if(c == FIZ_ERROR)
         {
-            char* last_statement = fiz_get_last_statement(F);
+            char* last_statement = fiz_get_last_statement(F, script);
+            const char* proc_name;
             fprintf(stderr, "error: %s in \"%s\"\n", fiz_get_return(F), last_statement);
+            int line = fiz_get_location_of_last_statement(F, &proc_name, script);
+            if(line)
+                fprintf(stderr, "      line %d of procedure %s", line, proc_name == NULL ? "(main script)" : proc_name);
             free(last_statement);
         }
         else if(c == FIZ_OOM)

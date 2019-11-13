@@ -186,12 +186,21 @@ void fiz_dict_delete(Fiz *F, const char *dict, const char *key);
  */
 const char *fiz_dict_next(Fiz *F, const char *dict, const char *key);
 
-/*@ char *fiz_get_last_statement(Fiz *F);
+/*@ char *fiz_get_last_statement(Fiz *F, const char* body);
  *# Returns last statement that was executed by the engine,
  *# good for diagnostics or error reporting
+ *# Will return "(none)" if no statement was captured
+ *# Will return "(inaccessible)" if the memory was already deallocated
  *# The returned string is dynamic, so it must be {{free()}}'ed afterwards
  */
-char *fiz_get_last_statement(Fiz *F);
+char *fiz_get_last_statement(Fiz *F, const char* body);
+
+/*@ int fiz_get_location_of_last_statement(Fiz* F, const char** proc_name, const char* body);
+ *# Returns the line number of the last statement or 0, when it could not find it
+ *# The optional {{body}} pointer is used as the script body (if provided)
+ *# The values are returned via pointers to {{line}} and {{proc_name}}, {{proc_name}} will be NULL if found in {{body}}
+ */
+int fiz_get_location_of_last_statement(Fiz* F, const char** proc_name, const char* body);
 
 /*@ void fiz_set_return_normalized_double(Fiz* F, const double result);
  *# Sets the return value to double floating point number, 
