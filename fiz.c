@@ -430,7 +430,11 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
     init_parser(&FI, str);
     argv = calloc(a_argc, sizeof *argv);
 
-    const char top_scope = !F->last_statement_begin;
+    const char top_scope = F->callframe->parent == NULL;
+    if(top_scope) {
+        F->last_statement_begin = NULL;
+        F->last_statement_end = NULL;
+    }
 
     for(;;) { /* For all the statements in the input */
         struct proc *p;

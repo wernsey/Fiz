@@ -219,6 +219,37 @@ static Fiz_Code aux_assert(Fiz* F, int argc, char** argv, void* data)
     return FIZ_ERROR;
 }
 
+/**
+ * `catch` - evaluate script and trap errors
+ * Syntax:
+ * `catch script`
+ * `catch script messageVar`
+ * Example:
+ * ```
+ * if { eq 1 [catch { assert { eq 1 2 } } messageVar]} {
+ *   puts "Cought error: $messageVar"
+ * }
+ */
+static Fiz_Code aux_catch(Fiz* F, int argc, char** argv, void* data)
+{
+    if (argc < 2)
+        return fiz_argc_error(F, argv[0], 2);
+    if (argc > 3)
+        return fiz_argc_error(F, argv[0], 3);
+    const char* const script = argv[1];
+    const Fiz_Code result = fiz_exec(F, script);
+    if (result != FIZ_OK) //< code returned an error
+    {
+        if(argc == 3)
+        {
+            const char* const messageVar = argv[2];
+            fiz_set_var(F, messageVar, fiz_get_return(F));
+        }
+    }
+    fiz_set_return_ex(F, "%d", result);
+    return FIZ_OK;
+}
+
 void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "puts", aux_puts, NULL);
     fiz_add_func(F, "expr", aux_expr, NULL);
@@ -231,6 +262,7 @@ void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "include", aux_include, NULL);
 #endif
     fiz_add_func(F, "assert", aux_assert, NULL);
+    fiz_add_func(F, "catch", aux_catch, NULL);
 }
 
 char *fiz_get_last_statement(Fiz *F) {
