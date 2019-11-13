@@ -319,3 +319,9 @@ void fiz_set_return_normalized_double(Fiz* F, const double result)
 
     fiz_set_return(F, numstr);
 }
+
+void fiz_abort(Fiz* F) {
+    F->abort = 1;
+    if(F->abort_func)
+        F->abort_func(F, F->abort_func_data);
+}

@@ -257,6 +257,9 @@ static enum FI_CODE parse_brace(Fiz *F, FizParser *FI) {
  * comments in the process.
  */
 static enum FI_CODE get_word(Fiz *F, FizParser *FI) {
+    if(F->abort)
+        return FI_EOI;
+
     /* Reset the interpreter's word tracker */
     FI->word[0] = '\0';
     FI->w_size = 0;
@@ -383,6 +386,9 @@ Fiz *fiz_create() {
     F->return_val = strdup("");
     F->last_statement_begin = NULL;
     F->last_statement_end = NULL;
+    F->abort = 0;
+    F->abort_func = NULL;
+    F->abort_func_data = NULL;
     add_bifs(F);
     return F;
 }
@@ -419,6 +425,11 @@ static void clear_argv(int argc, char **argv) {
 }
 
 Fiz_Code fiz_exec(Fiz *F, const char *str) {
+    if(F->abort) {
+        fiz_set_return(F, "Interpreter aborted");
+        return FIZ_ERROR;
+    }
+
     enum FI_CODE fic;
     FizParser FI;
     Fiz_Code rc = FIZ_OK;

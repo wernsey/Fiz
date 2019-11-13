@@ -11,6 +11,9 @@
 struct hash_tbl;
 struct fiz_callframe;
 
+struct fiz;
+typedef void (*Fiz_Abort_func)(struct fiz* F, void* data);
+
 /*2 Interpreter Structure
  */
 /*@ typedef struct fiz Fiz
@@ -25,6 +28,9 @@ typedef struct fiz {
 	char *return_val;
 	char const* last_statement_begin;
 	char const* last_statement_end;
+	int abort;
+	Fiz_Abort_func abort_func;
+	void* abort_func_data;
 } Fiz;
 
 /*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_OOM, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
@@ -53,6 +59,14 @@ void fiz_add_aux(Fiz *F);
  *# Deletes an interpreter structure.
  */
 void fiz_destroy(Fiz *F);
+
+/*@ void fiz_abort(Fiz *F);
+ *# Requests a gracefull abort of the currently running script.
+ *# It is possible to attach a callback to the abort event using {{Fiz::abort_func}} 
+ *# and {{Fiz::abort_func_data}}, which will be called just after executing this call
+ *# from the thread of the callee.
+ */
+void fiz_abort(Fiz *F);
 
 /*2 Executing the Interpreter
  */

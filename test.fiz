@@ -103,3 +103,23 @@ set_never_used_before_global
 
 puts $vvv
 assert { eq $vvv 123 }
+
+
+set messageVar "(none)"
+
+puts "cought=[catch { assert { eq 1 1 } } messageVar] $messageVar"
+# prints "cought=0 (none)"
+
+puts "cought=[catch { assert { eq 1 2 } } messageVar] $messageVar"
+# prints "cought=1 Assertion failed:  eq 1 2"
+
+
+if { expr [catch { assert { eq 1 2 } } messageVar]} {
+  puts "Cought error: $messageVar"
+}
+# prints "Cought error 1: Assertion failed:  eq 1 2"
+
+if { expr [catch { assert { eq 2 2 } } messageVar]} {
+  puts "should not happen"
+}
+# doesn't print anything, because the `eq 2 2` assertion succeeded
