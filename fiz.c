@@ -41,6 +41,11 @@ struct fiz_callframe {
     struct hash_tbl *vars;
 };
 
+/**
+ * Special object whose address is used to mark a variable as a global.
+ */
+static char global_var_marker = '\0';
+
 /*======================================================================
  * Data structure for the parser used internally.
 ======================================================================*/
@@ -252,6 +257,9 @@ static enum FI_CODE parse_brace(Fiz *F, FizParser *FI) {
  * comments in the process.
  */
 static enum FI_CODE get_word(Fiz *F, FizParser *FI) {
+    if(F->abort)
+        return FI_EOI;
+
     /* Reset the interpreter's word tracker */
     FI->word[0] = '\0';
     FI->w_size = 0;
@@ -353,6 +361,7 @@ static void add_callframe(Fiz *F)  {
 }
 
 static void free_var(const char *key, void *val) {
+    if(val == &global_var_marker) return;
 	free(val);
 }
 
@@ -377,6 +386,9 @@ Fiz *fiz_create() {
     F->return_val = strdup("");
     F->last_statement_begin = NULL;
     F->last_statement_end = NULL;
+    F->abort = 0;
+    F->abort_func = NULL;
+    F->abort_func_data = NULL;
     add_bifs(F);
     return F;
 }
@@ -413,6 +425,11 @@ static void clear_argv(int argc, char **argv) {
 }
 
 Fiz_Code fiz_exec(Fiz *F, const char *str) {
+    if(F->abort) {
+        fiz_set_return(F, "Interpreter aborted");
+        return FIZ_ERROR;
+    }
+
     enum FI_CODE fic;
     FizParser FI;
     Fiz_Code rc = FIZ_OK;
@@ -424,15 +441,14 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
     init_parser(&FI, str);
     argv = calloc(a_argc, sizeof *argv);
 
-    const char top_scope = !F->last_statement_begin;
+    F->last_statement_begin = NULL;
+    F->last_statement_end = NULL;
 
     for(;;) { /* For all the statements in the input */
         struct proc *p;
 
-        if(top_scope) {
-            F->last_statement_begin = FI.txt;
-            F->last_statement_end = NULL;
-        }
+        F->last_statement_begin = FI.txt;
+        F->last_statement_end = NULL;
 
         fic = get_word(F, &FI); /* get the command */
         if(fic == FI_EOI) break;
@@ -461,6 +477,8 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
             goto clean_error;
         }
 
+        const char* last_begin = F->last_statement_begin;
+        const char* last_end = F->last_statement_end;
         if(p->type == FIZ_CFUN) {
             /* External C-function */
             rc = p->fun.cfun.fun(F, argc, argv, p->fun.cfun.data);
@@ -485,18 +503,15 @@ Fiz_Code fiz_exec(Fiz *F, const char *str) {
                 delete_callframe(F);
                 goto clean_error;
             }
-			const char* last_begin = F->last_statement_begin;
-			const char* last_end = F->last_statement_end;
-			F->last_statement_begin = NULL;
-			F->last_statement_end = NULL;
             rc = fiz_exec(F, p->fun.proc.body);
             if(rc == FIZ_RETURN) rc = FIZ_OK;
-			if (rc == FIZ_OK)
-			{
-				F->last_statement_begin = last_begin;
-				F->last_statement_end = last_end;
-			}
             delete_callframe(F);
+        }
+
+        if (rc != FIZ_ERROR && rc != FIZ_OOM)
+        {
+            F->last_statement_begin = last_begin;
+            F->last_statement_end = last_end;
         }
         clear_argv(argc, argv);
         if(rc != FIZ_OK) break;
@@ -536,18 +551,39 @@ void fiz_set_return_ex(Fiz *F, const char *fmt, ...) {
     fiz_set_return(F, buffer);
 }
 
+static struct fiz_callframe* fiz_global_callframe(Fiz *F) {
+    struct fiz_callframe* cf = F->callframe;
+    while(cf->parent)
+        cf = cf->parent;
+    return cf;
+}
+
 const char *fiz_get_var(Fiz *F, const char *name) {
     assert(F->callframe);
-    return ht_find(F->callframe->vars, name);
+    const char* found = ht_find(F->callframe->vars, name);
+    if (found == &global_var_marker)
+        found = ht_find(fiz_global_callframe(F)->vars, name);
+    return found;
 }
 
 void fiz_set_var(Fiz *F, const char *name, const char *value) {
     assert(F->callframe);
-    /* Delete the var if it's already defined */
-    void* v = ht_delete(F->callframe->vars, name);
-    if(v) free(v);
+    /* Get the current value to check if it's not a global */
+    const char* current = ht_find(F->callframe->vars, name);
+    struct fiz_callframe* callframe;
+    if(current == &global_var_marker)
+    {
+        callframe = fiz_global_callframe(F);
+    }
+    else
+    {
+        /* Delete the var if it's already defined */
+        void* v = ht_delete(F->callframe->vars, name);
+        if(v) free_var(name, v);
+        callframe = F->callframe;
+    }
     /* Insert the value into the variable list */
-    ht_insert(F->callframe->vars, name, strdup(value));
+    ht_insert(callframe->vars, name, strdup(value));
 }
 
 void fiz_set_var_ex(Fiz *F, const char *name, const char *fmt, ...) {
@@ -651,6 +687,15 @@ Fiz_Code fiz_oom_error(Fiz *F) {
 }
 
 static Fiz_Code bif_set(Fiz *F, int argc, char **argv, void *data) {
+    if(argc == 2) {
+        const char* val = fiz_get_var(F, argv[1]);
+        if (!val) {
+            fiz_set_return_ex(F, "%s not found", argv[1]);
+            return FIZ_ERROR;
+        }
+        fiz_set_return(F, val);
+        return FIZ_OK;
+    }
     if(argc != 3)
         return fiz_argc_error(F, argv[0], 3);
     fiz_set_var(F, argv[1], argv[2]);
@@ -665,7 +710,7 @@ static Fiz_Code bif_proc(Fiz *F, int argc, char **argv, void *data) {
     const char* const name = argv[1];
     /* Delete the proc if it's already defined */
     void* v = ht_delete(F->commands, name);
-    if(v) free(v);
+    if(v) free_proc(name, v);
     /* Insert the proc into the commands list */
     p = malloc(sizeof *p);
     p->type = FIZ_PROC;
@@ -721,6 +766,25 @@ static Fiz_Code bif_cntrl(Fiz *F, int argc, char **argv, void *data) {
     return FIZ_BREAK;
 }
 
+static Fiz_Code bif_global(Fiz *F, int argc, char **argv, void *data) {
+    assert(F->callframe);
+    if(argc != 2)
+        return fiz_argc_error(F, argv[0], 2);
+    const char* name = argv[1];
+    /* Show error if trying to execute from global context */
+    if(F->callframe->parent == NULL) {
+        fiz_set_return(F, "Cannot call global from global context");
+        return FIZ_ERROR;
+    }
+    /* Delete the var if it's already defined */
+    void* v = ht_delete(F->callframe->vars, name);
+    if(v) free_var(name, v);
+    /* Insert flag marking this as a global */
+    ht_insert(F->callframe->vars, name, &global_var_marker);
+    fiz_set_return_ex(F, "%d", 1);
+    return FIZ_OK;
+}
+
 static void add_bifs(Fiz *F) {
     fiz_add_func(F, "set", bif_set, NULL);
     fiz_add_func(F, "proc", bif_proc, NULL);
@@ -729,4 +793,60 @@ static void add_bifs(Fiz *F) {
     fiz_add_func(F, "while", bif_while, NULL);
     fiz_add_func(F, "break", bif_cntrl, NULL);
     fiz_add_func(F, "continue", bif_cntrl, NULL);
+    fiz_add_func(F, "global", bif_global, NULL);
+}
+
+
+/*====================================================================
+ * Getting line numbers and ensuring part of the script is accessable
+ *====================================================================*/
+
+static int get_line_number(const char* begin, const char* end)
+{
+    int line = 1;
+    for(const char* p = begin; p < end && *p != '\0'; p++)
+        if(*p == '\n') line++;
+    return line;
+}
+
+struct find_proc_by_contents_arg { Fiz* F; const char* proc_name; int line; };
+static int find_proc_by_contents(const char *key, void *value, void *data)
+{
+    struct find_proc_by_contents_arg* arg = data;
+
+    struct proc* p = value;
+    if(p->type != FIZ_PROC) return 1;
+    const char* begin = p->fun.proc.body;
+    const char* end = begin + strlen(begin);
+    if(arg->F->last_statement_begin >= begin && arg->F->last_statement_end <= end)
+    {
+        arg->proc_name = key;
+        arg->line = get_line_number(begin, arg->F->last_statement_end);
+        return 0;
+    }
+    return 1;
+}
+
+int fiz_get_location_of_last_statement(Fiz* F, const char** proc_name, const char* body) {
+    if(body != NULL && F->last_statement_begin >= body && F->last_statement_end <= body + strlen(body)) {
+        /* Found in body */
+        int line_ = get_line_number(body, F->last_statement_begin);
+        if(proc_name != NULL)
+            *proc_name = NULL;
+        return line_;
+    }
+    else {
+        struct find_proc_by_contents_arg arg;
+        arg.F = F;
+        arg.line = 0;
+        arg.proc_name = NULL;
+        ht_foreach(F->commands, find_proc_by_contents, &arg);
+        /* Not found in proc nor body */
+        if(arg.proc_name == NULL)
+            return 0;
+        /* Found in proc */
+        if(proc_name != NULL)
+            *proc_name = arg.proc_name;
+        return arg.line;
+    }
 }

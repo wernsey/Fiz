@@ -11,6 +11,9 @@
 struct hash_tbl;
 struct fiz_callframe;
 
+struct fiz;
+typedef void (*Fiz_Abort_func)(struct fiz* F, void* data);
+
 /*2 Interpreter Structure
  */
 /*@ typedef struct fiz Fiz
@@ -25,6 +28,9 @@ typedef struct fiz {
 	char *return_val;
 	char const* last_statement_begin;
 	char const* last_statement_end;
+	int abort;
+	Fiz_Abort_func abort_func;
+	void* abort_func_data;
 } Fiz;
 
 /*@ typedef enum fiz_code {FIZ_OK, FIZ_ERROR, FIZ_OOM, FIZ_RETURN, FIZ_CONTINUE, FIZ_BREAK} Fiz_Code;
@@ -53,6 +59,14 @@ void fiz_add_aux(Fiz *F);
  *# Deletes an interpreter structure.
  */
 void fiz_destroy(Fiz *F);
+
+/*@ void fiz_abort(Fiz *F);
+ *# Requests a gracefull abort of the currently running script.
+ *# It is possible to attach a callback to the abort event using {{Fiz::abort_func}} 
+ *# and {{Fiz::abort_func_data}}, which will be called just after executing this call
+ *# from the thread of the callee.
+ */
+void fiz_abort(Fiz *F);
 
 /*2 Executing the Interpreter
  */
@@ -172,9 +186,24 @@ void fiz_dict_delete(Fiz *F, const char *dict, const char *key);
  */
 const char *fiz_dict_next(Fiz *F, const char *dict, const char *key);
 
-/*@ char *fiz_get_last_statement(Fiz *F);
+/*@ char *fiz_get_last_statement(Fiz *F, const char* body);
  *# Returns last statement that was executed by the engine,
  *# good for diagnostics or error reporting
+ *# Will return "(none)" if no statement was captured
+ *# Will return "(inaccessible)" if the memory was already deallocated
  *# The returned string is dynamic, so it must be {{free()}}'ed afterwards
  */
-char *fiz_get_last_statement(Fiz *F);
+char *fiz_get_last_statement(Fiz *F, const char* body);
+
+/*@ int fiz_get_location_of_last_statement(Fiz* F, const char** proc_name, const char* body);
+ *# Returns the line number of the last statement or 0, when it could not find it
+ *# The optional {{body}} pointer is used as the script body (if provided)
+ *# The values are returned via pointers to {{line}} and {{proc_name}}, {{proc_name}} will be NULL if found in {{body}}
+ */
+int fiz_get_location_of_last_statement(Fiz* F, const char** proc_name, const char* body);
+
+/*@ void fiz_set_return_normalized_double(Fiz* F, const double result);
+ *# Sets the return value to double floating point number, 
+ *# removing not needed trailing zeroes.
+ */
+void fiz_set_return_normalized_double(Fiz* F, const double result);

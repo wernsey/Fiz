@@ -75,43 +75,13 @@ static Fiz_Code aux_expr(Fiz *F, int argc, char **argv, void *data) {
         free(e);
         return FIZ_ERROR;
     }
+    free(e);
 #ifdef FIZ_INTEGER_EXPR
     fiz_set_return_ex(F, "%d", result);
-    free(e);
-    return FIZ_OK;
 #else
-    const int numsize = 30;
-    char numstr[30];
-    snprintf(numstr, numsize, "%.9f", result);
-
-    // trim trailing zeros and dot
-	char hasDot = 0;
-	for (int c = strlen(numstr) - 1; c > 0; c--) {
-		if (numstr[c] == '.') {
-			hasDot = 1;
-			break;
-		}
-	}
-	if (hasDot) {
-		for (int c = strlen(numstr) - 1; c > 0; c--)
-		{
-			if (numstr[c] == '0') {	//< trim trailing zeroes only after dot 
-				numstr[c] = '\0';
-			}
-			else if (numstr[c] == '.') { //< if dot found as last char remove it and stop trimming
-				numstr[c] = '\0';
-				break;
-			}
-			else { //< if non dot, non zero value found stop trimming
-				break;
-			}
-		}
-	}
-
-    fiz_set_return(F, numstr);
-    free(e);
+    fiz_set_return_normalized_double(F, result);
+#endif
     return FIZ_OK;
-#endif  
 }
 
 static Fiz_Code aux_eqne(Fiz *F, int argc, char **argv, void *data) {
@@ -230,6 +200,56 @@ static Fiz_Code aux_include(Fiz *F, int argc, char **argv, void *data) {
 }
 #endif
 
+/**
+ * `assert` - makes sure that a condition is correct, otherwise throws an error
+ * Syntax:
+ * `assert <condition>`
+ * Example:
+ * `assert { expr 2 + 2 == 4 }`
+ */
+static Fiz_Code aux_assert(Fiz* F, int argc, char** argv, void* data)
+{
+    if (argc != 2)
+        return fiz_argc_error(F, argv[0], 2);
+    if (fiz_exec(F, argv[1]) != FIZ_OK) //< code returned an error
+        return FIZ_ERROR;
+    if (atoi(fiz_get_return(F))) //< code returned a truthy value, assertion passed
+        return FIZ_OK;
+    fiz_set_return_ex(F, "Assertion failed: %s", argv[1]);
+    return FIZ_ERROR;
+}
+
+/**
+ * `catch` - evaluate script and trap errors
+ * Syntax:
+ * `catch script`
+ * `catch script messageVar`
+ * Example:
+ * ```
+ * if { eq 1 [catch { assert { eq 1 2 } } messageVar]} {
+ *   puts "Cought error: $messageVar"
+ * }
+ */
+static Fiz_Code aux_catch(Fiz* F, int argc, char** argv, void* data)
+{
+    if (argc < 2)
+        return fiz_argc_error(F, argv[0], 2);
+    if (argc > 3)
+        return fiz_argc_error(F, argv[0], 3);
+    const char* const script = argv[1];
+    const Fiz_Code result = fiz_exec(F, script);
+    if (result != FIZ_OK) //< code returned an error
+    {
+        if(argc == 3)
+        {
+            const char* const messageVar = argv[2];
+            fiz_set_var(F, messageVar, fiz_get_return(F));
+        }
+    }
+    fiz_set_return_ex(F, "%d", result);
+    return FIZ_OK;
+}
+
 void fiz_add_aux(Fiz *F) {
     fiz_add_func(F, "puts", aux_puts, NULL);
     fiz_add_func(F, "expr", aux_expr, NULL);
@@ -241,20 +261,67 @@ void fiz_add_aux(Fiz *F) {
 #ifndef FIZ_DISABLE_INCLUDE_FILES
     fiz_add_func(F, "include", aux_include, NULL);
 #endif
+    fiz_add_func(F, "assert", aux_assert, NULL);
+    fiz_add_func(F, "catch", aux_catch, NULL);
 }
 
-char *fiz_get_last_statement(Fiz *F) {
+char *fiz_get_last_statement(Fiz *F, const char* body) {
+    int line = fiz_get_location_of_last_statement(F, NULL, body);
+    if(line <= 0) 
+        return strdup("(inaccessible)"); //< Probably was in dynamic scope and not allocated anymore
     if (!F->last_statement_begin || !F->last_statement_end)
         return strdup("(none)");
-    int length = F->last_statement_end - F->last_statement_begin;
-    char* last_statement = strndup(F->last_statement_begin, length);
+    const char* begin = F->last_statement_begin;
+    while(*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r')
+        begin++;
+    int length = F->last_statement_end - begin;
+    char* last_statement = strndup(begin, length);
     // Strip newline and whitespace at end of statement
     for (int i = length - 1; i >= 0; i--) {
         char ch = last_statement[i];
-        if (ch == ' ' || ch == '\t' || ch == '\n')
+        if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
             last_statement[i] = '\0';
         else 
             break;
     }
     return last_statement;
+}
+
+void fiz_set_return_normalized_double(Fiz* F, const double result)
+{
+    const int numsize = 30;
+    char numstr[30];
+    snprintf(numstr, numsize, "%.9f", result);
+
+    // trim trailing zeros and dot
+    char hasDot = 0;
+    for (int c = strlen(numstr) - 1; c > 0; c--) {
+        if (numstr[c] == '.') {
+            hasDot = 1;
+            break;
+        }
+    }
+    if (hasDot) {
+        for (int c = strlen(numstr) - 1; c > 0; c--)
+        {
+            if (numstr[c] == '0') {    //< trim trailing zeroes only after dot 
+                numstr[c] = '\0';
+            }
+            else if (numstr[c] == '.') { //< if dot found as last char remove it and stop trimming
+                numstr[c] = '\0';
+                break;
+            }
+            else { //< if non dot, non zero value found stop trimming
+                break;
+            }
+        }
+    }
+
+    fiz_set_return(F, numstr);
+}
+
+void fiz_abort(Fiz* F) {
+    F->abort = 1;
+    if(F->abort_func)
+        F->abort_func(F, F->abort_func_data);
 }
